@@ -175,5 +175,11 @@ public class AppServer {
 
     server.start();
     System.out.println("🚀 Backend Server รันแล้วที่พอร์ต 8080...");
+    // 🌟 เปิดหน้าต่าง Desktop App ทันทีที่เซิร์ฟเวอร์รันเสร็จ
+    java.awt.EventQueue.invokeLater(new Runnable() {
+      public void run() {
+        new UI().setVisible(true);
+      }
+    });
   }
 }

@@ -289,4 +289,61 @@ public class DatabaseManager {
       System.err.println("❌ Budget Update Error: " + e.getMessage());
     }
   }
+
+  // 🌟 ดึงรายชื่อบัญชีทั้งหมดสำหรับทำ Dropdown ในหน้าต่าง Swing
+  public static java.util.List<String> getAccountNames() {
+    java.util.List<String> list = new java.util.ArrayList<>();
+    try {
+      Class.forName("org.sqlite.JDBC");
+      Connection conn = DriverManager.getConnection(URL);
+      Statement stmt = conn.createStatement();
+      ResultSet rs = stmt.executeQuery("SELECT name, balance FROM accounts");
+      while (rs.next()) {
+        list.add(rs.getString("name") + ":" + rs.getDouble("balance")); // ส่งชื่อและเงินกลับไป
+      }
+      rs.close();
+      stmt.close();
+      conn.close();
+    } catch (Exception e) {
+    }
+    return list;
+  }
+
+  // 🌟 ดึงข้อมูล Transaction แบบครบทุกคอลัมน์ (มี ID สำหรับ Edit/Delete)
+  public static Object[][] getTransactionsForSwingTable() {
+    try {
+      Class.forName("org.sqlite.JDBC");
+      Connection conn = DriverManager.getConnection(URL);
+      Statement stmt = conn.createStatement();
+      ResultSet rs = stmt.executeQuery("SELECT * FROM transactions ORDER BY tx_date DESC");
+
+      java.util.List<Object[]> rowList = new java.util.ArrayList<>();
+      while (rs.next()) {
+        Object[] row = new Object[10]; // เพิ่มเป็น 10 คอลัมน์ให้ครบ
+        row[0] = rs.getString("id"); // ID ซ่อนไว้ใช้ตอนแก้ไข
+        row[1] = rs.getString("tx_date");
+        row[2] = rs.getString("name");
+        row[3] = rs.getString("category");
+        row[4] = rs.getString("type");
+        row[5] = rs.getDouble("amount");
+        row[6] = rs.getString("from_account");
+        row[7] = rs.getString("to_account");
+        row[8] = rs.getString("status");
+        row[9] = rs.getString("note");
+        rowList.add(row);
+      }
+      rs.close();
+      stmt.close();
+      conn.close();
+
+      Object[][] data = new Object[rowList.size()][10];
+      for (int i = 0; i < rowList.size(); i++)
+        data[i] = rowList.get(i);
+      return data;
+
+    } catch (Exception e) {
+      System.err.println("❌ Error fetching for Swing: " + e.getMessage());
+      return new Object[0][0];
+    }
+  }
 }
