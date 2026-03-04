@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Balance Sheet Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="left-panel">
+            <div class="card">
+                <h3>Actions</h3>
+                <button class="btn" onclick="openModal('txModal')">+ New Transaction</button>
+                <button class="btn" style="background-color: #28a745;" onclick="openModal('accountModal')">⚙️ Manage Accounts</button>
+                <button class="btn" style="background-color: #17a2b8;" onclick="openModal('budgetModal')">📊 Set Budget</button>
+            </div>
+            <div class="card">
+                <h3>Summary</h3>
+                <div class="summary-grid">
+                    <div class="summary-box income"><h4>Total Income</h4><h3 id="sumIncome">0.00</h3></div>
+                    <div class="summary-box expense"><h4>Total Expense</h4><h3 id="sumExpense">0.00</h3></div>
+                    <div class="summary-box" style="border: 1px solid #17a2b8;"><h4>Today's Budget Left</h4><h3 id="todayBudgetLeft" style="color:#17a2b8;">0.00</h3></div>
+                    <div class="summary-box" style="border: 1px solid #17a2b8;"><h4>Monthly Budget Left</h4><h3 id="monthlyBudgetLeft" style="color:#17a2b8;">0.00</h3></div>
+                </div>
+                <div class="summary-box"><h4>Net Balance</h4><h3 id="netBalance">0.00</h3></div>            </div>
+            <div class="card" style="flex: 1; overflow-y: auto;">
+                <h3>My Accounts</h3>
+                <div id="accountsList"></div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Transaction History</h3>
+                <div style="display: flex; gap: 10px;">
+                    <select id="timeFilter" onchange="updateUI()" style="padding: 5px; background: #3d3d3d; color: white; border: 1px solid #555; border-radius: 4px;">
+                        <option value="ALL">All Time</option>
+                        <option value="TODAY">Today</option>
+                        <option value="WEEK">This Week</option>
+                        <option value="MONTH">This Month</option>
+                        <option value="YEAR">This Year</option>
+                    </select>
+                    <select id="sortFilter" onchange="updateUI()" style="padding: 5px; background: #3d3d3d; color: white; border: 1px solid #555; border-radius: 4px;">
+                        <option value="DATE_DESC">Date (Newest)</option>
+                        <option value="DATE_ASC">Date (Oldest)</option>
+                        <option value="NAME_ASC">Name (A-Z)</option>
+                        <option value="TYPE">Type</option>
+                    </select>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="txTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="txModal" class="modal">
+        <div class="modal-content" style="width: 400px;"> 
+            <h3>Add Transaction</h3>
+            
+            <div class="form-group">
+                <label>Date (วันที่):</label>
+                <input type="date" id="txDate"> 
+            </div>
+
+            <div class="form-group">
+                <label>Type:</label>
+                <select id="typeSelect" onchange="toggleTxFields()">
+                    <option value="EXPENSE">Expense (รายจ่าย)</option>
+                    <option value="INCOME">Income (รายรับ)</option>
+                    <option value="TRANSFER">Transfer (โอนเงิน)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Name (ชื่อรายการ):</label>
+                <input type="text" id="txName" placeholder="เช่น ซื้อกับข้าว, จ่ายค่าหอ">
+            </div>
+            <div class="form-group" id="categoryGroup">
+                <label>Category:</label>
+                <select id="categorySelect">
+                    <option value="FOOD">Food (อาหาร)</option>
+                    <option value="SHOPPING">Shopping (ช้อปปิ้ง)</option>
+                    <option value="INTERNET_BILL">Internet Bill (ค่าเน็ต)</option>
+                    <option value="SALARY">Salary (เงินเดือน)</option>
+                    <option value="PARENTS">Parents (ผู้ปกครอง)</option>
+                    <option value="OTHERS">Others (อื่นๆ)</option>
+                    <option value="NONE">None (สำหรับโอนเงิน)</option>
+                </select>
+            </div>
+            <div class="form-group" id="fromGroup">
+                <label>From Account:</label>
+                <select id="fromAccSelect"></select>
+            </div>
+            <div class="form-group" id="toGroup" style="display:none;">
+                <label>To Account:</label>
+                <select id="toAccSelect"></select>
+            </div>
+            <div class="form-group">
+                <label>Amount (THB):</label>
+                <input type="number" id="amountInput" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Status:</label>
+                <select id="statusSelect">
+                    <option value="COMPLETED">Completed</option>
+                    <option value="PENDING">Pending</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Note (รายละเอียดเพิ่มเติม):</label>
+                <input type="text" id="txNote" placeholder="ระบุรายละเอียด (ถ้ามี)">
+            </div>
+            <button class="btn" onclick="saveTx()">Save</button>
+            <button class="btn btn-danger" onclick="closeModal('txModal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="accountModal" class="modal">
+        <div class="modal-content">
+            <h3>Manage Accounts</h3>
+            <div id="manageAccList" style="margin-bottom: 20px; max-height: 150px; overflow-y: auto;"></div>
+            <hr style="border-color: #555;">
+            <h4>Add New Account</h4>
+            <div class="form-group"><input type="text" id="newAccName" placeholder="Account Name (e.g. KBank)"></div>
+            <div class="form-group"><input type="number" id="newAccBalance" placeholder="Initial Balance"></div>
+            <button class="btn" id="saveAccBtn" style="background-color: #28a745;" onclick="saveAccount()">Add Account</button>
+            <button class="btn btn-danger" onclick="closeModal('accountModal')">Close</button>
+        </div>
+    </div>
+
+    <div id="budgetModal" class="modal">
+        <div class="modal-content">
+            <h3>Set Budget (ตั้งงบประมาณ)</h3>
+            <div class="form-group">
+                <label>โหมดการตั้งงบ:</label>
+                <select id="budgetMode" onchange="previewBudget()">
+                    <option value="MONTHLY">กำหนดเงินที่ใช้ได้ต่อเดือน (Monthly)</option>
+                    <option value="DAILY">กำหนดเงินที่ใช้ได้ต่อวัน (Daily)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>จำนวนเงิน (THB):</label>
+                <input type="number" id="budgetAmount" placeholder="0.00" oninput="previewBudget()">
+            </div>
+            <div style="background: #2d2d2d; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 14px;">
+                <span id="budgetPreview">💡 กรอกจำนวนเงินเพื่อดูการคำนวณ</span>
+            </div>
+            <button class="btn" style="background-color: #17a2b8;" onclick="saveBudget()">Save Budget</button>
+            <button class="btn btn-danger" onclick="closeModal('budgetModal')">Close</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
