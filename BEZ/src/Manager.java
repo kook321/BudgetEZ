@@ -20,20 +20,45 @@ public class Manager {
     }
 
     public void addTransaction(Transaction t){
-        this.transactionList.add(t);
-        this.currentBalance += t.amount;
+    this.transactionList.add(t);
+    this.currentBalance = t.calculateNewBalance(this.currentBalance);
+}
+
+    public double calculateDailyAvailableFromDate(int today){
+
+    double balanceUntilToday = currentBalance;
+
+    // รวมเฉพาะรายการก่อนวันที่เลือก
+    for(Transaction t : transactionList){
+
+        String[] parts = t.date.split("-");
+        int day = Integer.parseInt(parts[0]);
+
+        if(day >= today){
+            balanceUntilToday -= t.amount;
+        }
     }
 
-    public double getDailyAverageAvaiable(int today){
     int remainingDays = totalDaysinMonth - today + 1;
-    double DailyBudget = currentBalance / remainingDays;
-    System.out.println(String.format("%.2f", DailyBudget));
-    return currentBalance / remainingDays;
+
+    if(remainingDays <= 0){
+        return 0;
     }
+
+    return balanceUntilToday / remainingDays;
+}
 
    public void MonthlySummary(){
         System.out.println(currentBalance);
     }
+
+    public List<Transaction> getTransactionList() {
+    return transactionList;
+}
+
+public double getCurrentBalance() {
+    return currentBalance;
+}
 
 
 

@@ -1,16 +1,26 @@
 public class Expense extends Transaction{
-   // public boolean isNecessary
+    public boolean isNecessary;
 
-     public Expense(int id, String date, double amount,
-                  String description, Categorys category,
-                  String source) {
-                super(id, date, amount > 0 ? -amount : amount, description, category);  // เรียกของแม่
-        //this.source = source;
+     public Expense( String date, 
+                    double amount,
+                    String description, 
+                    Categorys category,
+                    boolean isNecessary) {
+                
+                        super(date, 
+                        -Math.abs(amount), 
+                        description, 
+                        category);  // เรียกของแม่
+        this.isNecessary = isNecessary;
     }
 
-    @Override
-    public double calculateNewBalance(double currentBalance){
-        currentBalance += this.amount;
-        return super.calculateNewBalance(currentBalance);
+    public void Info(){
+        System.out.println(id);
+        System.out.println(date);
+        System.out.println(amount);
+        System.out.println(description);
+        System.out.println(category);
+        System.out.println(isNecessary);
     }
+  
 }
