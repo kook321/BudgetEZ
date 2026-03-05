@@ -2,8 +2,8 @@ let editingTxId = null;
 let editingAccId = null;
 let accounts = [];
 let transactions = [];
-let budget = { mode: 'MONTHLY', amount: 0 }; // 🌟 เพิ่มตัวแปรเก็บ Budget
-// ================= 1. โหลดข้อมูลและคำนวณเงิน =================
+let budget = { mode: 'MONTHLY', amount: 0 };
+// ================= Loading database =================
 function loadAllData() {
   fetch("http://localhost:8080/api/account", { cache: "no-store" })
     .then(res => res.json())
@@ -14,24 +14,21 @@ function loadAllData() {
     .then(res => res.json())
     .then(txData => {
       transactions = txData;
-      // 🌟 ตรงนี้คือส่วนที่หายไปครับ! ต้องสั่งให้ดึง Budget ต่อ
       return fetch("http://localhost:8080/api/budget", { cache: "no-store" });
     })
     .then(res => res.json())
     .then(bgData => {
-      budget = bgData; // 🌟 เก็บค่า Budget ลงตัวแปรให้หน้าเว็บรู้จัก
+      budget = bgData;
       recalculateBalances();
-      updateUI(); // คำสั่งนี้จะเรียก updateSummary() ให้เปลี่ยน Text ครับ
+      updateUI();
     })
-    .catch(err => console.error("❌ ติดต่อ Server ไม่ได้: ", err));
+    .catch(err => console.error("❌ Unable to connect to the server: ", err));
 }
 function recalculateBalances() {
-  // 1. รีเซ็ตเงินเริ่มต้นกลับเป็นค่าตั้งต้นก่อน
   accounts.forEach(acc => {
     acc.balance = acc.initialBalance || 0;
   });
 
-  // 2. นำประวัติทั้งหมดมาบวกลบใหม่
   transactions.forEach(tx => {
     if (tx.status === 'COMPLETED') {
       if (tx.type === 'EXPENSE') {
@@ -101,15 +98,13 @@ function updateSummary() {
   let todayElem = document.getElementById('todayBudgetLeft');
   let monthElem = document.getElementById('monthlyBudgetLeft');
 
-  todayElem.innerText = budget.amount === 0 ? "ไม่จำกัด" : todayLeft.toFixed(2);
-  monthElem.innerText = budget.amount === 0 ? "ไม่จำกัด" : monthLeft.toFixed(2);
+  todayElem.innerText = budget.amount === 0 ? "NOT FIX" : todayLeft.toFixed(2);
+  monthElem.innerText = budget.amount === 0 ? "NOT FIX" : monthLeft.toFixed(2);
 
-  // เปลี่ยนสีถ้าใช้เงินเกินงบ
   todayElem.style.color = todayLeft < 0 ? "#ff4c4c" : "#17a2b8";
   monthElem.style.color = monthLeft < 0 ? "#ff4c4c" : "#17a2b8";
 }
 
-// 🌟 ลอจิกสำหรับ Modal: คำนวณให้ดูสดๆ
 function previewBudget() {
   let amt = parseFloat(document.getElementById('budgetAmount').value || 0);
   let mode = document.getElementById('budgetMode').value;
@@ -117,49 +112,49 @@ function previewBudget() {
   let preview = document.getElementById('budgetPreview');
   let daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
 
-  if (amt === 0) { preview.innerText = "💡 กรอกจำนวนเงินเพื่อดูการคำนวณ"; return; }
+  if (amt === 0) { preview.innerText = "💡 Enter the amount to view the calculation"; return; }
 
   if (mode === 'MONTHLY') {
     if (amt > net) {
-      preview.innerHTML = `<span style="color:#ff4c4c">⚠️ งบรายเดือน (${amt} ฿) เกินยอดเงินคงเหลือที่คุณมี (${net} ฿)</span>`;
+      preview.innerHTML = `<span style="color:#ff4c4c">⚠️ Monthly budget (${amt} ฿) are exceeding your remaining balance (${net} ฿)</span>`;
     } else {
       let daily = (amt / daysInMonth).toFixed(2);
-      preview.innerHTML = `💡 ถ้ายึดตามนี้ คุณจะใช้เงินได้วันละ <b>${daily} บาท</b>`;
+      preview.innerHTML = `💡 You will be able to spend money <b>${daily} THB per day</b>`;
     }
   } else {
     let monthNeeded = amt * daysInMonth;
     if (monthNeeded > net) {
       let daysItWillLast = Math.floor(net / amt);
-      preview.innerHTML = `<span style="color:#ff4c4c">⚠️ เงินคุณมีไม่พอใช้ทั้งเดือน (เงินจะหมดใน ${daysItWillLast} วัน)</span>`;
+      preview.innerHTML = `<span style="color:#ff4c4c">⚠️ You don't have enough money to last the whole month (Your money will run out in ${daysItWillLast} day)</span>`;
     } else {
       let months = (net / monthNeeded).toFixed(1);
-      preview.innerHTML = `💡 จากเงินเก็บที่มี คุณจะอยู่รอดได้ประมาณ <b>${months} เดือน</b>`;
+      preview.innerHTML = `💡 With your savings, you can survive for <b>${months} months</b>`;
     }
   }
 }
 
-// 🌟 บันทึกลง Database
+// Write to Database
 function saveBudget() {
   let amt = parseFloat(document.getElementById('budgetAmount').value || 0);
   let mode = document.getElementById('budgetMode').value;
   let net = parseFloat(document.getElementById('netBalance').innerText);
   let daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
 
-  // ดักจับไม่ให้ตั้งงบเกินเงินที่มี
+  // Preventing budgeting from exceeding available funds
   if ((mode === 'MONTHLY' && amt > net) || (mode === 'DAILY' && (amt * daysInMonth) > net)) {
-    alert("❌ ไม่สามารถบันทึกได้ เพราะคุณตั้งงบเกินยอดเงินคงเหลือที่มีอยู่จริงครับ!");
+    alert("❌ This cannot be saved because you have set a budget that exceeds your actual available balance!");
     return;
   }
 
   fetch("http://localhost:8080/api/budget", { method: "POST", body: `${mode}|${amt}` })
     .then(() => {
       closeModal('budgetModal');
-      loadAllData(); // โหลดข้อมูลวาดหน้าเว็บใหม่
+      loadAllData();
     })
     .catch(err => console.error(err));
 }
 
-// ================= 2. ระบบจัดการบัญชี (Account) =================
+// ================= Account management =================
 function editAccount(id) {
   let acc = accounts.find(a => a.id === id);
   if (acc) {
@@ -172,18 +167,16 @@ function editAccount(id) {
 }
 
 function saveAccount() {
-  // 🌟 ใช้ .trim() ตัดช่องว่าง เผื่อเผลอกดสเปซบาร์
   const name = document.getElementById('newAccName').value.trim();
   const bal = parseFloat(document.getElementById('newAccBalance').value || 0);
 
   if (name) {
-    // 🌟 ดักจับเผื่อพิมพ์ชื่อบัญชีซ้ำกับที่มีอยู่แล้ว
     const isDuplicate = accounts.some(acc =>
       acc.name.toLowerCase() === name.toLowerCase() && acc.id !== editingAccId
     );
 
     if (isDuplicate) {
-      alert("❌ ชื่อบัญชี '" + name + "' มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่นครับ");
+      alert("❌ Account name '" + name + "' it's already in the system. Please use a different name.");
       return;
     }
 
@@ -199,18 +192,18 @@ function saveAccount() {
         document.getElementById('newAccBalance').value = '';
 
         closeModal('accountModal');
-        loadAllData(); // 🌟 โหลดข้อมูลใหม่ (คราวนี้โหลดติดแน่นอนเพราะเราใส่ no-store ไว้ข้างบนแล้ว)
+        loadAllData();
       })
       .catch(err => {
         console.error("Error saving account:", err);
-        alert("❌ ไม่สามารถติดต่อ Server ได้");
+        alert("❌ Unable to connect to the server.");
       });
   } else {
-    alert("กรุณากรอกชื่อบัญชีครับ");
+    alert("Please enter your account name.");
   }
 }
 function removeAccount(id) {
-  if (confirm("คุณต้องการลบบัญชีนี้ใช่หรือไม่?")) {
+  if (confirm("Do you want to delete this account?")) {
     fetch("http://localhost:8080/api/account", { method: "DELETE", body: id.toString() })
       .then(() => loadAllData());
   }
@@ -268,7 +261,7 @@ function saveTx() {
       document.getElementById('txName').value = '';
       document.getElementById('amountInput').value = '';
       document.getElementById('txNote').value = '';
-      loadAllData(); // เรียกใช้งานโหลดข้อมูลใหม่ที่ถูกต้อง
+      loadAllData();
     })
     .catch(err => console.error("Error saving/updating:", err));
 }
@@ -347,7 +340,7 @@ function renderTransactions() {
   });
 }
 
-// ================= 4. UI Helpers =================
+// ================= UI Helpers =================
 function updateDropdowns() {
   const fromSel = document.getElementById('fromAccSelect');
   const toSel = document.getElementById('toAccSelect');
@@ -371,5 +364,4 @@ function openModal(id) {
 }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-// 🌟 เริ่มต้นทำงานทันทีที่โหลดเว็บเสร็จ
 loadAllData();

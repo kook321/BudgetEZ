@@ -8,19 +8,28 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Main application server that hosts the local REST API and launches the
+ * Desktop UI.
+ */
 public class AppServer {
   static List<Account> accounts = new ArrayList<>();
   static List<Transaction> history = new ArrayList<>();
 
+  /**
+   * Main entry point. Initializes the database, configures API endpoints,
+   * starts the HTTP server, and opens the Swing Desktop Application.
+   */
   public static void main(String[] args) throws IOException {
     DatabaseManager.initialize();
 
     HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
 
+    // Endpoint for Transactions (GET, POST, PUT, DELETE)
     server.createContext("/api/transaction", new HttpHandler() {
       @Override
       public void handle(HttpExchange exchange) throws IOException {
-        // อนุญาตให้หน้าเว็บส่งคำสั่ง POST, PUT, DELETE มาได้ (CORS)
+        // Allow Web CORS requests
         exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
         exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, PUT, DELETE, OPTIONS");
         exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
@@ -32,12 +41,12 @@ public class AppServer {
 
         String method = exchange.getRequestMethod();
 
-        // --- กรณีเพิ่มใหม่ (POST) หรือ แก้ไข (PUT) ---
+        // --- Handle Create (POST) or Update (PUT) ---
         if ("POST".equals(method) || "PUT".equals(method)) {
           String requestBody = new String(exchange.getRequestBody().readAllBytes());
           String[] data = requestBody.split("\\|");
 
-          // ถ้าเป็น PUT (แก้ไข) ข้อมูลช่องแรกสุดจะเป็น ID
+          // For PUT (Update), the first element is the ID
           int offset = "PUT".equals(method) ? 1 : 0;
           String id = "PUT".equals(method) ? data[0] : "TX" + System.currentTimeMillis();
 
@@ -65,9 +74,9 @@ public class AppServer {
           os.write("OK".getBytes());
           os.close();
         }
-        // --- กรณีลบ (DELETE) ---
+        // --- Handle Delete (DELETE) ---
         else if ("DELETE".equals(method)) {
-          String id = new String(exchange.getRequestBody().readAllBytes()); // รับ ID มาตรงๆ
+          String id = new String(exchange.getRequestBody().readAllBytes()); // Receive ID directly
           DatabaseManager.deleteTransaction(id);
           exchange.sendResponseHeaders(200, "OK".getBytes().length);
           OutputStream os = exchange.getResponseBody();
@@ -76,7 +85,8 @@ public class AppServer {
         }
       }
     });
-    // 🌟 Endpoint จัดการบัญชี (GET, POST, PUT, DELETE)
+
+    // Endpoint for Accounts (GET, POST, PUT, DELETE)
     server.createContext("/api/account", new HttpHandler() {
       @Override
       public void handle(HttpExchange exchange) throws IOException {
@@ -120,7 +130,8 @@ public class AppServer {
         }
       }
     });
-    // 🌟 Endpoint สำหรับให้หน้าเว็บดึงข้อมูลประวัติ (Transactions) ทั้งหมด
+
+    // Endpoint for fetching all historical transactions
     server.createContext("/api/data", new HttpHandler() {
       @Override
       public void handle(HttpExchange exchange) throws IOException {
@@ -139,7 +150,7 @@ public class AppServer {
       }
     });
 
-    // 🌟 Endpoint สำหรับจัดการ Budget
+    // Endpoint for Budget management
     server.createContext("/api/budget", new HttpHandler() {
       @Override
       public void handle(HttpExchange exchange) throws IOException {
@@ -174,8 +185,9 @@ public class AppServer {
     });
 
     server.start();
-    System.out.println("🚀 Backend Server รันแล้วที่พอร์ต 8080...");
-    // 🌟 เปิดหน้าต่าง Desktop App ทันทีที่เซิร์ฟเวอร์รันเสร็จ
+    System.out.println("🚀 Backend Server is running on port 8080...");
+
+    // Open the Desktop UI after the server starts successfully
     java.awt.EventQueue.invokeLater(new Runnable() {
       public void run() {
         new UI().setVisible(true);

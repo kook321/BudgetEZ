@@ -1,16 +1,24 @@
 import java.sql.*;
 import java.time.LocalDate;
 
+/**
+ * Handles all SQLite database operations including initialization, CRUD for
+ * transactions, accounts, and settings.
+ */
 public class DatabaseManager {
-  // กำหนดตำแหน่งไฟล์ Database (จะถูกสร้างอัตโนมัติในโฟลเดอร์โปรเจกต์)
+  // Database file location (automatically created in the project folder)
   private static final String URL = "jdbc:sqlite:finance.db";
 
+  /**
+   * Initializes the database, forces the JDBC driver load, and creates necessary
+   * tables if they do not exist.
+   */
   public static void initialize() {
     try {
-      // 1. บังคับโหลด Driver (สังเกตตัวพิมพ์ใหญ่ JDBC)
+      // 1. Force load the SQLite JDBC Driver
       Class.forName("org.sqlite.JDBC");
 
-      // 2. เชื่อมต่อและสร้างตาราง
+      // 2. Connect and create tables
       Connection conn = DriverManager.getConnection(URL);
       Statement stmt = conn.createStatement();
 
@@ -32,7 +40,8 @@ public class DatabaseManager {
           "note TEXT)");
 
       stmt.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");
-      // ใส่ค่าเริ่มต้นถ้ายังไม่มี
+
+      // Insert default values if not exists
       stmt.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('budget_mode', 'MONTHLY')");
       stmt.execute("INSERT OR IGNORE INTO settings(key, value) VALUES('budget_amount', '0')");
 
@@ -41,19 +50,22 @@ public class DatabaseManager {
       System.out.println("✅ Database tables initialized (finance.db)");
 
     } catch (ClassNotFoundException e) {
-      System.err.println("❌ หาไฟล์ Driver (.jar) ไม่เจอ: " + e.getMessage());
+      System.err.println("❌ Driver (.jar) not found: " + e.getMessage());
     } catch (SQLException e) {
       System.err.println("❌ Database Error: " + e.getMessage());
     }
   }
 
+  /**
+   * Saves a new transaction to the database.
+   *
+   * @param tx The transaction object to save.
+   */
   public static void saveTransaction(Transaction tx) {
     String sql = "INSERT INTO transactions(id, tx_date, type, name, category, amount, status, from_account, to_account, note) VALUES(?,?,?,?,?,?,?,?,?,?)";
 
     try {
-      // บังคับโหลด Driver ก่อนเชื่อมต่อ
       Class.forName("org.sqlite.JDBC");
-
       Connection conn = DriverManager.getConnection(URL);
       PreparedStatement pstmt = conn.prepareStatement(sql);
 
@@ -71,16 +83,20 @@ public class DatabaseManager {
       pstmt.executeUpdate();
       pstmt.close();
       conn.close();
-      System.out.println("💾 บันทึก Transaction ลง Database สำเร็จ!");
+      System.out.println("💾 Transaction saved to Database successfully!");
 
     } catch (ClassNotFoundException e) {
-      System.err.println("❌ หาไฟล์ Driver (.jar) ไม่เจอ: " + e.getMessage());
+      System.err.println("❌ Driver (.jar) not found: " + e.getMessage());
     } catch (SQLException e) {
       System.err.println("❌ Error saving transaction: " + e.getMessage());
     }
   }
 
-  // 🌟 ดึงข้อมูลทั้งหมดจาก Database แปลงเป็นรูปแบบ JSON ส่งให้หน้าเว็บ
+  /**
+   * Retrieves all transactions as a JSON array string for the Web API.
+   *
+   * @return A JSON formatted string containing all transactions.
+   */
   public static String getAllTransactionsAsJSON() {
     StringBuilder json = new StringBuilder("[\n");
     String sql = "SELECT * FROM transactions ORDER BY tx_date ASC";
@@ -119,7 +135,11 @@ public class DatabaseManager {
     return json.toString();
   }
 
-  // 🌟 ฟังก์ชันลบรายการ
+  /**
+   * Deletes a transaction by its ID.
+   *
+   * @param id The ID of the transaction to delete.
+   */
   public static void deleteTransaction(String id) {
     String sql = "DELETE FROM transactions WHERE id = ?";
     try {
@@ -130,13 +150,18 @@ public class DatabaseManager {
       pstmt.executeUpdate();
       pstmt.close();
       conn.close();
-      System.out.println("🗑️ ลบ Transaction ID: " + id + " สำเร็จ!");
+      System.out.println("🗑️ Transaction ID: " + id + " deleted successfully!");
     } catch (Exception e) {
       System.err.println("❌ Error deleting transaction: " + e.getMessage());
     }
   }
 
-  // 🌟 ฟังก์ชันอัปเดตรายการเดิม
+  /**
+   * Updates an existing transaction.
+   *
+   * @param tx The updated transaction object.
+   * @param id The ID of the transaction to update.
+   */
   public static void updateTransaction(Transaction tx, String id) {
     String sql = "UPDATE transactions SET tx_date=?, type=?, name=?, category=?, amount=?, status=?, from_account=?, to_account=?, note=? WHERE id=?";
     try {
@@ -152,17 +177,21 @@ public class DatabaseManager {
       pstmt.setString(7, tx.getFromAccount() != null ? tx.getFromAccount().getName() : null);
       pstmt.setString(8, tx.getToAccount() != null ? tx.getToAccount().getName() : null);
       pstmt.setString(9, tx.getNote());
-      pstmt.setString(10, id); // ระบุว่าแก้อันไหน
+      pstmt.setString(10, id);
       pstmt.executeUpdate();
       pstmt.close();
       conn.close();
-      System.out.println("🔄 อัปเดต Transaction ID: " + id + " สำเร็จ!");
+      System.out.println("🔄 Transaction ID: " + id + " updated successfully!");
     } catch (Exception e) {
       System.err.println("❌ Error updating transaction: " + e.getMessage());
     }
   }
 
-  // 🌟 ดึงข้อมูล Account ทั้งหมดส่งให้หน้าเว็บ
+  /**
+   * Retrieves all accounts as a JSON array string for the Web API.
+   *
+   * @return A JSON formatted string containing all accounts.
+   */
   public static String getAllAccountsAsJSON() {
     StringBuilder json = new StringBuilder("[\n");
     String sql = "SELECT * FROM accounts";
@@ -193,7 +222,12 @@ public class DatabaseManager {
     return json.toString();
   }
 
-  // 🌟 เซฟ Account ลง Database
+  /**
+   * Saves a new account to the database.
+   *
+   * @param name    The name of the account.
+   * @param balance The initial balance.
+   */
   public static void saveAccount(String name, double balance) {
     String sql = "INSERT INTO accounts(name, balance) VALUES(?,?)";
     try {
@@ -206,11 +240,17 @@ public class DatabaseManager {
       pstmt.close();
       conn.close();
     } catch (Exception e) {
-      System.err.println("❌ Error: " + e.getMessage());
+      System.err.println("❌ Error saving account: " + e.getMessage());
     }
   }
 
-  // 🌟 อัปเดต Account เดิม
+  /**
+   * Updates an existing account's name and balance.
+   *
+   * @param id      The ID of the account.
+   * @param name    The new name of the account.
+   * @param balance The new balance.
+   */
   public static void updateAccount(int id, String name, double balance) {
     String sql = "UPDATE accounts SET name=?, balance=? WHERE id=?";
     try {
@@ -224,11 +264,15 @@ public class DatabaseManager {
       pstmt.close();
       conn.close();
     } catch (Exception e) {
-      System.err.println("❌ Error: " + e.getMessage());
+      System.err.println("❌ Error updating account: " + e.getMessage());
     }
   }
 
-  // 🌟 ลบ Account
+  /**
+   * Deletes an account by its ID.
+   *
+   * @param id The ID of the account to delete.
+   */
   public static void deleteAccount(int id) {
     String sql = "DELETE FROM accounts WHERE id=?";
     try {
@@ -240,11 +284,15 @@ public class DatabaseManager {
       pstmt.close();
       conn.close();
     } catch (Exception e) {
-      System.err.println("❌ Error: " + e.getMessage());
+      System.err.println("❌ Error deleting account: " + e.getMessage());
     }
   }
 
-  // 🌟 ดึงข้อมูล Budget ส่งให้หน้าเว็บ
+  /**
+   * Retrieves the current budget settings as a JSON object.
+   *
+   * @return A JSON string representing the budget mode and amount.
+   */
   public static String getBudgetAsJSON() {
     String mode = "MONTHLY";
     double amount = 0;
@@ -265,11 +313,15 @@ public class DatabaseManager {
     } catch (Exception e) {
       System.err.println("❌ Budget Fetch Error: " + e.getMessage());
     }
-
     return "{\"mode\":\"" + mode + "\", \"amount\":" + amount + "}";
   }
 
-  // 🌟 บันทึกข้อมูล Budget
+  /**
+   * Updates the budget settings in the database.
+   *
+   * @param mode   The budget mode (e.g., MONTHLY, DAILY).
+   * @param amount The budget limit amount.
+   */
   public static void updateBudget(String mode, double amount) {
     try {
       Class.forName("org.sqlite.JDBC");
@@ -290,15 +342,17 @@ public class DatabaseManager {
     }
   }
 
-  // 🌟 ดึงรายชื่อบัญชีทั้งหมดสำหรับทำ Dropdown ในหน้าต่าง Swing
+  /**
+   * Retrieves a list of account details formatted for Swing Dropdowns.
+   *
+   * @return A list of strings in the format "id:name:balance".
+   */
   public static java.util.List<String> getAccountNames() {
     java.util.List<String> list = new java.util.ArrayList<>();
     try {
       Class.forName("org.sqlite.JDBC");
       Connection conn = DriverManager.getConnection(URL);
       Statement stmt = conn.createStatement();
-
-      // 🌟 แก้ไข: ดึงคอลัมน์ id มาด้วย เพื่อเอาไว้ใช้อ้างอิงตอนแก้ไข/ลบ
       ResultSet rs = stmt.executeQuery("SELECT id, name, balance FROM accounts");
       while (rs.next()) {
         list.add(rs.getInt("id") + ":" + rs.getString("name") + ":" + rs.getDouble("balance"));
@@ -311,7 +365,12 @@ public class DatabaseManager {
     return list;
   }
 
-  // 🌟 ดึงข้อมูล Transaction แบบครบทุกคอลัมน์ (มี ID สำหรับ Edit/Delete)
+  /**
+   * Retrieves all transactions as a 2D Object array for JTable rendering in
+   * Swing.
+   *
+   * @return A 2D array of transaction data.
+   */
   public static Object[][] getTransactionsForSwingTable() {
     try {
       Class.forName("org.sqlite.JDBC");
@@ -321,8 +380,8 @@ public class DatabaseManager {
 
       java.util.List<Object[]> rowList = new java.util.ArrayList<>();
       while (rs.next()) {
-        Object[] row = new Object[10]; // เพิ่มเป็น 10 คอลัมน์ให้ครบ
-        row[0] = rs.getString("id"); // ID ซ่อนไว้ใช้ตอนแก้ไข
+        Object[] row = new Object[10];
+        row[0] = rs.getString("id");
         row[1] = rs.getString("tx_date");
         row[2] = rs.getString("name");
         row[3] = rs.getString("category");

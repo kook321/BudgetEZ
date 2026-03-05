@@ -1,5 +1,8 @@
 import java.time.LocalDate;
 
+/**
+ * Represents a single financial transaction.
+ */
 public class Transaction {
   private String id;
   private String details;
@@ -10,11 +13,22 @@ public class Transaction {
   private Account fromAccount;
   private Account toAccount;
   private double amount;
-
-  // Transaction Status like complete, pending
   private TransactionStatus status;
 
-  // Constructor
+  /**
+   * Constructs a new Transaction.
+   *
+   * @param id          Unique transaction ID.
+   * @param details     Name or description of the transaction.
+   * @param note        Additional notes.
+   * @param type        Transaction type (INCOME, EXPENSE, TRANSFER).
+   * @param category    Transaction category.
+   * @param date        Date of the transaction.
+   * @param fromAccount Source account (can be null for INCOME).
+   * @param toAccount   Destination account (can be null for EXPENSE).
+   * @param amount      Transaction amount.
+   * @param status      Current status (PENDING, COMPLETED).
+   */
   public Transaction(String id, String details, String note, TransactionType type, Category category,
       LocalDate date, Account fromAccount, Account toAccount, double amount,
       TransactionStatus status) {
@@ -30,40 +44,44 @@ public class Transaction {
     this.status = status;
   }
 
-  // 🌟 3. ปรับปรุง Logic การคำนวณเงิน
+  /**
+   * Processes the transaction by updating account balances based on its type.
+   * Balances are only updated if the status is COMPLETED.
+   */
   public void processTransaction() {
-    // ดักเงื่อนไข: ถ้ายังไม่เสร็จสิ้น จะยังไม่เอาเงินไปคำนวณ
+    // Condition: Do not calculate if the transaction is not completed
     if (this.status != TransactionStatus.COMPLETED) {
-      System.out
-          .println("⏳ รายการ [" + this.details + "] สถานะเป็น " + this.status + " (ยอดเงินในบัญชียังไม่ถูกอัปเดต)");
+      System.out.println(
+          "⏳ Transaction [" + this.details + "] status is " + this.status + " (Account balance not updated yet)");
       return;
     }
 
-    // ถ้าสถานะ COMPLETED แล้ว ค่อยทำงานตามปกติ
+    // Process balances if status is COMPLETED
     if (this.type == TransactionType.EXPENSE && fromAccount != null) {
       fromAccount.deductFunds(amount);
-      System.out.println("✅ หักเงินรายจ่าย [" + this.details + "] จำนวน " + amount + " เรียบร้อย");
+      System.out.println("✅ Expense deducted [" + this.details + "] Amount: " + amount + " successfully");
     } else if (this.type == TransactionType.INCOME && toAccount != null) {
       toAccount.addFunds(amount);
-      System.out.println("✅ รับเงินเข้า [" + this.details + "] จำนวน " + amount + " เรียบร้อย");
+      System.out.println("✅ Income added [" + this.details + "] Amount: " + amount + " successfully");
     } else if (this.type == TransactionType.TRANSFER && fromAccount != null && toAccount != null) {
       fromAccount.deductFunds(amount);
       toAccount.addFunds(amount);
-      System.out.println("✅ โอนเงิน [" + this.details + "] จำนวน " + amount + " เรียบร้อย");
+      System.out.println("✅ Transfer completed [" + this.details + "] Amount: " + amount + " successfully");
     }
   }
 
-  // 🌟 4. เพิ่มฟังก์ชันสำหรับเปลี่ยนสถานะในภายหลัง (เช่น เปลี่ยนจาก Pending ->
-  // Completed)
+  /**
+   * Updates the transaction status to COMPLETED and processes the balances.
+   */
   public void completeTransaction() {
     if (this.status != TransactionStatus.COMPLETED) {
       this.status = TransactionStatus.COMPLETED;
-      System.out.println("🔄 อัปเดตสถานะรายการ [" + this.details + "] เป็น COMPLETED");
-      processTransaction(); // พอสถานะเปลี่ยนเป็นเสร็จสิ้น ค่อยเรียกฟังก์ชันคำนวณเงิน
+      System.out.println("🔄 Status updated for [" + this.details + "] to COMPLETED");
+      processTransaction(); // Process calculation after status change
     }
   }
 
-  // Getter สำหรับดึงสถานะไปแสดงผลบนหน้าเว็บ
+  // Getters
   public TransactionStatus getStatus() {
     return this.status;
   }

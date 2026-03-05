@@ -1,3 +1,6 @@
+/**
+ * Defines the categories for transactions.
+ */
 public enum Category {
-  SALARY, FOOD, INTERNET_BILL, PARENTS, SHOPPING, OTHERS, NONE // NONE เอาไว้ใช้กับ Transfer
+  SALARY, FOOD, INTERNET_BILL, ElECTCICITY_Bill, RENT, TRANSPORTATION, PARENTS, SHOPPING, OTHERS, NONE
 }

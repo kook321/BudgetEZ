@@ -5,8 +5,12 @@ import java.awt.*;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * The main Desktop User Interface (Java Swing) for the Balance Sheet Dashboard.
+ */
 public class UI extends JFrame {
 
+  // --- Theme Colors (Dark Theme matching the Web App) ---
   private final Color BG_MAIN = new Color(30, 30, 30);
   private final Color BG_CARD = new Color(45, 45, 45);
   private final Color TEXT_COLOR = new Color(255, 255, 255);
@@ -20,30 +24,35 @@ public class UI extends JFrame {
   private JLabel sumIncomeLabel, sumExpenseLabel, todayBudgetLabel, monthBudgetLabel, netBalanceLabel;
   private JPanel accountsListPanel;
 
+  /**
+   * Initializes the UI components and sets up global font rendering.
+   */
   public UI() {
     super("Balance Sheet Dashboard");
 
-    // Fix thai font, up to os system
-    // You can change the font to be compatible with your operating system
-    Font thaiFont = new Font("SansSerif", Font.PLAIN, 14);
-    Font thaiFontBold = new Font("SansSerif", Font.BOLD, 13);
+    // Force global font for proper multi-language and OS rendering compatibility
+    Font mainFont = new Font("SansSerif", Font.PLAIN, 14);
+    Font mainFontBold = new Font("SansSerif", Font.BOLD, 13);
 
-    UIManager.put("Label.font", thaiFont);
-    UIManager.put("Button.font", thaiFontBold);
-    UIManager.put("ComboBox.font", thaiFont);
-    UIManager.put("TextField.font", thaiFont);
-    UIManager.put("Table.font", thaiFont);
-    UIManager.put("TableHeader.font", thaiFontBold);
-    UIManager.put("OptionPane.messageFont", thaiFont);
-    UIManager.put("OptionPane.buttonFont", thaiFontBold);
+    UIManager.put("Label.font", mainFont);
+    UIManager.put("Button.font", mainFontBold);
+    UIManager.put("ComboBox.font", mainFont);
+    UIManager.put("TextField.font", mainFont);
+    UIManager.put("Table.font", mainFont);
+    UIManager.put("TableHeader.font", mainFontBold);
+    UIManager.put("OptionPane.messageFont", mainFont);
+    UIManager.put("OptionPane.buttonFont", mainFontBold);
 
     initComponents();
     setSize(1280, 720);
-    setLocationRelativeTo(null);
+    setLocationRelativeTo(null); // Center on screen
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     refreshData();
   }
 
+  /**
+   * Constructs the internal layout and components of the frame.
+   */
   private void initComponents() {
     getContentPane().setBackground(BG_MAIN);
     setLayout(new BorderLayout(15, 15));
@@ -126,6 +135,7 @@ public class UI extends JFrame {
     TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(txTableModel);
     txTable.setRowSorter(sorter);
 
+    // Hide ID column
     txTable.getColumnModel().getColumn(0).setMinWidth(0);
     txTable.getColumnModel().getColumn(0).setMaxWidth(0);
 
@@ -150,7 +160,7 @@ public class UI extends JFrame {
     add(rightPanel, BorderLayout.CENTER);
   }
 
-  // --- Helpers การสร้าง UI แนว Web App ---
+  // --- UI Helpers ---
   private JPanel createCardPanel(String title) {
     JPanel panel = new JPanel(new BorderLayout(0, 10));
     panel.setBackground(BG_CARD);
@@ -206,6 +216,11 @@ public class UI extends JFrame {
 
   // ================= LOGIC =================
 
+  /**
+   * Displays the dialog for adding or editing a transaction.
+   *
+   * @param editId The ID of the transaction to edit (null if creating a new one).
+   */
   private void showTransactionDialog(String editId) {
     JPanel form = new JPanel(new GridLayout(9, 2, 5, 5));
     JTextField dateField = new JTextField(LocalDate.now().toString());
@@ -223,7 +238,7 @@ public class UI extends JFrame {
 
     List<String> accData = DatabaseManager.getAccountNames();
     for (String s : accData) {
-      String accName = s.split(":")[1]; // 🌟 โชว์ชื่อบัญชี (Index 1)
+      String accName = s.split(":")[1]; // Show account name (Index 1)
       fromBox.addItem(accName);
       toBox.addItem(accName);
     }
@@ -240,13 +255,14 @@ public class UI extends JFrame {
     form.add(fromBox);
     form.add(new JLabel("To Account:"));
     form.add(toBox);
-    form.add(new JLabel("Amount:"));
+    form.add(new JLabel("Amount (THB):"));
     form.add(amountField);
     form.add(new JLabel("Status:"));
     form.add(statusBox);
     form.add(new JLabel("Note:"));
     form.add(noteField);
 
+    // Auto-fill existing data if editing
     if (editId != null) {
       int row = txTable.getSelectedRow();
       dateField.setText(txTable.getValueAt(row, 1).toString());
@@ -262,6 +278,7 @@ public class UI extends JFrame {
 
     int result = JOptionPane.showConfirmDialog(this, form, editId == null ? "New Transaction" : "Edit Transaction",
         JOptionPane.OK_CANCEL_OPTION);
+
     if (result == JOptionPane.OK_OPTION) {
       try {
         Account fAcc = fromBox.getSelectedItem().equals("None") ? null
@@ -283,7 +300,7 @@ public class UI extends JFrame {
 
         refreshData();
       } catch (Exception ex) {
-        JOptionPane.showMessageDialog(this, "Invalid Input Format!");
+        JOptionPane.showMessageDialog(this, "❌ Please enter valid data (Amount must be a number)");
       }
     }
   }
@@ -304,7 +321,7 @@ public class UI extends JFrame {
       JOptionPane.showMessageDialog(this, "Please select a row to delete.");
       return;
     }
-    if (JOptionPane.showConfirmDialog(this, "Delete this transaction?", "Confirm",
+    if (JOptionPane.showConfirmDialog(this, "Delete this transaction?", "Confirm Delete",
         JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
       String id = txTableModel.getValueAt(txTable.convertRowIndexToModel(row), 0).toString();
       DatabaseManager.deleteTransaction(id);
@@ -312,13 +329,15 @@ public class UI extends JFrame {
     }
   }
 
-  // 🌟 ระบบตั้งงบประมาณ (เลือกรายเดือน/รายวันได้)
+  /**
+   * Budget Setup System (Monthly/Daily)
+   */
   private void setBudget() {
     JPanel form = new JPanel(new GridLayout(2, 2, 5, 5));
     JComboBox<String> modeBox = new JComboBox<>(new String[] { "MONTHLY", "DAILY" });
     JTextField amtF = new JTextField();
 
-    // ดึงค่าเก่ามาโชว์ในช่อง
+    // Fetch previous value to display
     String budgetJson = DatabaseManager.getBudgetAsJSON();
     String currentMode = budgetJson.contains("\"mode\":\"MONTHLY\"") ? "MONTHLY" : "DAILY";
     String amountStr = budgetJson.split("\"amount\":")[1].replace("}", "").trim();
@@ -335,13 +354,16 @@ public class UI extends JFrame {
       try {
         DatabaseManager.updateBudget(modeBox.getSelectedItem().toString(), Double.parseDouble(amtF.getText()));
         refreshData();
+        JOptionPane.showMessageDialog(this, "✅ Budget set successfully!");
       } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Invalid number");
+        JOptionPane.showMessageDialog(this, "❌ Please enter a valid number");
       }
     }
   }
 
-  // 🌟 ระบบจัดการบัญชี (เพิ่มใหม่ / แก้ไข / ลบ)
+  /**
+   * Account Management System (Add / Edit / Delete)
+   */
   private void manageAccountsDialog() {
     JPanel form = new JPanel(new GridLayout(3, 2, 5, 5));
 
@@ -349,7 +371,7 @@ public class UI extends JFrame {
     accCombo.addItem("--- Create New Account ---");
     List<String> accData = DatabaseManager.getAccountNames();
     for (String s : accData) {
-      accCombo.addItem(s.split(":")[1]); // โชว์แค่ชื่อบัญชี
+      accCombo.addItem(s.split(":")[1]); // Show only account name
     }
 
     JTextField nameF = new JTextField();
@@ -362,7 +384,7 @@ public class UI extends JFrame {
     form.add(new JLabel("Initial Balance:"));
     form.add(balF);
 
-    // ดึงข้อมูลมาเติมให้อัตโนมัติเวลาสลับ Dropdown
+    // Auto-fill data when switching dropdown
     accCombo.addActionListener(e -> {
       int idx = accCombo.getSelectedIndex();
       if (idx == 0) {
@@ -380,20 +402,20 @@ public class UI extends JFrame {
         JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
         null, options, options[0]);
 
-    if (result == 0) { // กด Save
+    if (result == 0) { // Clicked Save
       try {
         int idx = accCombo.getSelectedIndex();
         if (idx == 0) {
           DatabaseManager.saveAccount(nameF.getText(), Double.parseDouble(balF.getText()));
         } else {
-          int id = Integer.parseInt(accData.get(idx - 1).split(":")[0]); // เอา ID ไปอัปเดต
+          int id = Integer.parseInt(accData.get(idx - 1).split(":")[0]); // Use ID to update
           DatabaseManager.updateAccount(id, nameF.getText(), Double.parseDouble(balF.getText()));
         }
         refreshData();
       } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Invalid number");
+        JOptionPane.showMessageDialog(this, "❌ Please enter a valid number");
       }
-    } else if (result == 1) { // กด Delete
+    } else if (result == 1) { // Clicked Delete
       int idx = accCombo.getSelectedIndex();
       if (idx > 0) {
         int id = Integer.parseInt(accData.get(idx - 1).split(":")[0]);
@@ -405,6 +427,9 @@ public class UI extends JFrame {
     }
   }
 
+  /**
+   * Refreshes all UI components by fetching fresh data from the DatabaseManager.
+   */
   private void refreshData() {
     txTableModel.setRowCount(0);
     Object[][] data = DatabaseManager.getTransactionsForSwingTable();
