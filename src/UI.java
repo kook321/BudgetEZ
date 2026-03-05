@@ -17,15 +17,28 @@ public class UI extends JFrame {
 
   private DefaultTableModel txTableModel;
   private JTable txTable;
-  private JLabel sumIncomeLabel, sumExpenseLabel, netBalanceLabel;
+  private JLabel sumIncomeLabel, sumExpenseLabel, todayBudgetLabel, monthBudgetLabel, netBalanceLabel;
   private JPanel accountsListPanel;
 
   public UI() {
     super("Balance Sheet Dashboard");
-    UIManager.put("Label.font", new Font("Segoe UI", Font.PLAIN, 14));
-    UIManager.put("Button.font", new Font("Segoe UI", Font.BOLD, 12));
+
+    // Fix thai font, up to os system
+    // You can change the font to be compatible with your operating system
+    Font thaiFont = new Font("SansSerif", Font.PLAIN, 14);
+    Font thaiFontBold = new Font("SansSerif", Font.BOLD, 13);
+
+    UIManager.put("Label.font", thaiFont);
+    UIManager.put("Button.font", thaiFontBold);
+    UIManager.put("ComboBox.font", thaiFont);
+    UIManager.put("TextField.font", thaiFont);
+    UIManager.put("Table.font", thaiFont);
+    UIManager.put("TableHeader.font", thaiFontBold);
+    UIManager.put("OptionPane.messageFont", thaiFont);
+    UIManager.put("OptionPane.buttonFont", thaiFontBold);
+
     initComponents();
-    setSize(1100, 700);
+    setSize(1280, 720);
     setLocationRelativeTo(null);
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     refreshData();
@@ -39,39 +52,49 @@ public class UI extends JFrame {
     // ================= LEFT PANEL =================
     JPanel leftPanel = new JPanel(new BorderLayout(0, 15));
     leftPanel.setBackground(BG_MAIN);
-    leftPanel.setPreferredSize(new Dimension(300, 0));
+    leftPanel.setPreferredSize(new Dimension(320, 0));
 
-    // 1. Actions Card
+    // Actions Card
     JPanel actionCard = createCardPanel("Actions");
-    actionCard.setLayout(new GridLayout(4, 1, 0, 10));
+    actionCard.setLayout(new GridLayout(0, 1, 0, 10));
+
     JButton newTxBtn = createButton("+ New Transaction", BTN_BLUE);
-    newTxBtn.addActionListener(e -> showTransactionDialog(null)); // null means Create New
+    newTxBtn.addActionListener(e -> showTransactionDialog(null));
     JButton accBtn = createButton("⚙ Manage Accounts", BTN_GREEN);
     accBtn.addActionListener(e -> manageAccountsDialog());
-    JButton budgetBtn = createButton("📊 Set Budget", BTN_TEAL);
+    JButton budgetBtn = createButton("⌂ Set Budget", BTN_TEAL);
     budgetBtn.addActionListener(e -> setBudget());
-    JButton refreshBtn = createButton("🔄 Refresh Data", new Color(100, 100, 100));
+    JButton refreshBtn = createButton("↺ Refresh Data", new Color(100, 100, 100));
     refreshBtn.addActionListener(e -> refreshData());
+
     actionCard.add(newTxBtn);
     actionCard.add(accBtn);
     actionCard.add(budgetBtn);
     actionCard.add(refreshBtn);
 
-    // 2. Summary Card
+    // Summary Card
     JPanel summaryCard = createCardPanel("Summary");
-    summaryCard.setLayout(new GridLayout(3, 1, 0, 10));
-    sumIncomeLabel = new JLabel("Total Income: 0.00");
-    sumIncomeLabel.setForeground(new Color(76, 175, 80));
-    sumExpenseLabel = new JLabel("Total Expense: 0.00");
-    sumExpenseLabel.setForeground(new Color(244, 67, 54));
-    netBalanceLabel = new JLabel("Net Balance: 0.00");
-    netBalanceLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
-    netBalanceLabel.setForeground(TEXT_COLOR);
-    summaryCard.add(sumIncomeLabel);
-    summaryCard.add(sumExpenseLabel);
-    summaryCard.add(netBalanceLabel);
+    summaryCard.setLayout(new BorderLayout(0, 10));
 
-    // 3. Accounts Card
+    JPanel summaryGrid = new JPanel(new GridLayout(2, 2, 10, 10));
+    summaryGrid.setBackground(BG_CARD);
+
+    sumIncomeLabel = createSummaryBox("Total Income", new Color(76, 175, 80));
+    sumExpenseLabel = createSummaryBox("Total Expense", new Color(244, 67, 54));
+    todayBudgetLabel = createSummaryBox("Today's Budget Left", BTN_TEAL);
+    monthBudgetLabel = createSummaryBox("Monthly Budget Left", BTN_TEAL);
+
+    summaryGrid.add(sumIncomeLabel);
+    summaryGrid.add(sumExpenseLabel);
+    summaryGrid.add(todayBudgetLabel);
+    summaryGrid.add(monthBudgetLabel);
+
+    netBalanceLabel = createSummaryBox("Net Balance", TEXT_COLOR);
+
+    summaryCard.add(summaryGrid, BorderLayout.CENTER);
+    summaryCard.add(netBalanceLabel, BorderLayout.SOUTH);
+
+    // Accounts Card
     JPanel accountsCard = createCardPanel("My Accounts");
     accountsCard.setLayout(new BorderLayout());
     accountsListPanel = new JPanel();
@@ -96,15 +119,13 @@ public class UI extends JFrame {
     txTableModel = new DefaultTableModel(columns, 0) {
       public boolean isCellEditable(int row, int column) {
         return false;
-      } // ห้ามดับเบิลคลิกแก้ในตาราง
+      }
     };
     txTable = new JTable(txTableModel);
 
-    // 🌟 เพิ่มระบบคลิกหัวตารางเพื่อ Sort
     TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(txTableModel);
     txTable.setRowSorter(sorter);
 
-    // ซ่อนคอลัมน์ ID (ไว้ใช้หลังบ้าน)
     txTable.getColumnModel().getColumn(0).setMinWidth(0);
     txTable.getColumnModel().getColumn(0).setMaxWidth(0);
 
@@ -116,7 +137,6 @@ public class UI extends JFrame {
     txTable.setRowHeight(30);
     rightPanel.add(new JScrollPane(txTable), BorderLayout.CENTER);
 
-    // ปุ่มใต้ตาราง
     JPanel tableActions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
     tableActions.setBackground(BG_CARD);
     JButton editBtn = createButton("Edit Selected", new Color(255, 152, 0));
@@ -130,7 +150,7 @@ public class UI extends JFrame {
     add(rightPanel, BorderLayout.CENTER);
   }
 
-  // --- Helper Methods ---
+  // --- Helpers การสร้าง UI แนว Web App ---
   private JPanel createCardPanel(String title) {
     JPanel panel = new JPanel(new BorderLayout(0, 10));
     panel.setBackground(BG_CARD);
@@ -149,6 +169,39 @@ public class UI extends JFrame {
     btn.setForeground(Color.WHITE);
     btn.setFocusPainted(false);
     return btn;
+  }
+
+  private JLabel createSummaryBox(String title, Color valColor) {
+    JLabel label = new JLabel();
+    label.setHorizontalAlignment(SwingConstants.CENTER);
+    label.setOpaque(true);
+    label.setBackground(new Color(61, 61, 61));
+    label.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 5));
+    updateSummaryBox(label, title, 0.00, valColor);
+    return label;
+  }
+
+  private void updateSummaryBox(JLabel label, String title, double value, Color color) {
+    String hexColor = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+    String html = "<html><div style='text-align: center; font-family: sans-serif;'>"
+        + "<div style='color: #aaaaaa; font-size: 11px; margin-bottom: 5px;'>" + title + "</div>"
+        + "<div style='color: " + hexColor + "; font-size: 16px; font-weight: bold;'>" + String.format("%,.2f", value)
+        + "</div>"
+        + "</div></html>";
+    label.setText(html);
+  }
+
+  private void updateBudgetBox(JLabel label, String title, double value, boolean noLimit) {
+    if (noLimit) {
+      String html = "<html><div style='text-align: center; font-family: sans-serif;'>"
+          + "<div style='color: #aaaaaa; font-size: 11px; margin-bottom: 5px;'>" + title + "</div>"
+          + "<div style='color: #aaaaaa; font-size: 14px; font-weight: bold;'>Unlimited</div>"
+          + "</div></html>";
+      label.setText(html);
+    } else {
+      Color color = value < 0 ? new Color(244, 67, 54) : new Color(23, 162, 184);
+      updateSummaryBox(label, title, value, color);
+    }
   }
 
   // ================= LOGIC =================
@@ -170,7 +223,7 @@ public class UI extends JFrame {
 
     List<String> accData = DatabaseManager.getAccountNames();
     for (String s : accData) {
-      String accName = s.split(":")[0];
+      String accName = s.split(":")[1]; // 🌟 โชว์ชื่อบัญชี (Index 1)
       fromBox.addItem(accName);
       toBox.addItem(accName);
     }
@@ -194,7 +247,6 @@ public class UI extends JFrame {
     form.add(new JLabel("Note:"));
     form.add(noteField);
 
-    // ดึงข้อมูลเก่ามาใส่ถ้าเป็นการ Edit
     if (editId != null) {
       int row = txTable.getSelectedRow();
       dateField.setText(txTable.getValueAt(row, 1).toString());
@@ -260,69 +312,161 @@ public class UI extends JFrame {
     }
   }
 
+  // 🌟 ระบบตั้งงบประมาณ (เลือกรายเดือน/รายวันได้)
   private void setBudget() {
-    String input = JOptionPane.showInputDialog(this, "Monthly Budget (THB):");
-    if (input != null && !input.isEmpty()) {
+    JPanel form = new JPanel(new GridLayout(2, 2, 5, 5));
+    JComboBox<String> modeBox = new JComboBox<>(new String[] { "MONTHLY", "DAILY" });
+    JTextField amtF = new JTextField();
+
+    // ดึงค่าเก่ามาโชว์ในช่อง
+    String budgetJson = DatabaseManager.getBudgetAsJSON();
+    String currentMode = budgetJson.contains("\"mode\":\"MONTHLY\"") ? "MONTHLY" : "DAILY";
+    String amountStr = budgetJson.split("\"amount\":")[1].replace("}", "").trim();
+    modeBox.setSelectedItem(currentMode);
+    amtF.setText(amountStr);
+
+    form.add(new JLabel("Budget Mode:"));
+    form.add(modeBox);
+    form.add(new JLabel("Amount (THB):"));
+    form.add(amtF);
+
+    if (JOptionPane.showConfirmDialog(this, form, "Set Budget",
+        JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
       try {
-        DatabaseManager.updateBudget("MONTHLY", Double.parseDouble(input));
+        DatabaseManager.updateBudget(modeBox.getSelectedItem().toString(), Double.parseDouble(amtF.getText()));
+        refreshData();
       } catch (Exception e) {
         JOptionPane.showMessageDialog(this, "Invalid number");
       }
     }
   }
 
+  // 🌟 ระบบจัดการบัญชี (เพิ่มใหม่ / แก้ไข / ลบ)
   private void manageAccountsDialog() {
-    JPanel form = new JPanel(new GridLayout(2, 2, 5, 5));
+    JPanel form = new JPanel(new GridLayout(3, 2, 5, 5));
+
+    JComboBox<String> accCombo = new JComboBox<>();
+    accCombo.addItem("--- Create New Account ---");
+    List<String> accData = DatabaseManager.getAccountNames();
+    for (String s : accData) {
+      accCombo.addItem(s.split(":")[1]); // โชว์แค่ชื่อบัญชี
+    }
+
     JTextField nameF = new JTextField();
     JTextField balF = new JTextField();
+
+    form.add(new JLabel("Select to Edit:"));
+    form.add(accCombo);
     form.add(new JLabel("Account Name:"));
     form.add(nameF);
     form.add(new JLabel("Initial Balance:"));
     form.add(balF);
-    if (JOptionPane.showConfirmDialog(this, form, "Add Account",
-        JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+
+    // ดึงข้อมูลมาเติมให้อัตโนมัติเวลาสลับ Dropdown
+    accCombo.addActionListener(e -> {
+      int idx = accCombo.getSelectedIndex();
+      if (idx == 0) {
+        nameF.setText("");
+        balF.setText("");
+      } else {
+        String[] parts = accData.get(idx - 1).split(":");
+        nameF.setText(parts[1]);
+        balF.setText(parts[2]);
+      }
+    });
+
+    Object[] options = { "Save", "Delete", "Cancel" };
+    int result = JOptionPane.showOptionDialog(this, form, "Manage Accounts",
+        JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
+        null, options, options[0]);
+
+    if (result == 0) { // กด Save
       try {
-        DatabaseManager.saveAccount(nameF.getText(), Double.parseDouble(balF.getText()));
+        int idx = accCombo.getSelectedIndex();
+        if (idx == 0) {
+          DatabaseManager.saveAccount(nameF.getText(), Double.parseDouble(balF.getText()));
+        } else {
+          int id = Integer.parseInt(accData.get(idx - 1).split(":")[0]); // เอา ID ไปอัปเดต
+          DatabaseManager.updateAccount(id, nameF.getText(), Double.parseDouble(balF.getText()));
+        }
         refreshData();
       } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Error saving account");
+        JOptionPane.showMessageDialog(this, "Invalid number");
+      }
+    } else if (result == 1) { // กด Delete
+      int idx = accCombo.getSelectedIndex();
+      if (idx > 0) {
+        int id = Integer.parseInt(accData.get(idx - 1).split(":")[0]);
+        DatabaseManager.deleteAccount(id);
+        refreshData();
+      } else {
+        JOptionPane.showMessageDialog(this, "Cannot delete 'Create New Account'");
       }
     }
   }
 
   private void refreshData() {
-    // อัปเดตตาราง
     txTableModel.setRowCount(0);
     Object[][] data = DatabaseManager.getTransactionsForSwingTable();
     for (Object[] row : data)
       txTableModel.addRow(row);
 
-    // อัปเดต Account List ด้านซ้าย
     accountsListPanel.removeAll();
     List<String> accs = DatabaseManager.getAccountNames();
     double net = 0;
     for (String a : accs) {
-      String[] parts = a.split(":");
-      JLabel l = new JLabel(parts[0] + " = " + parts[1] + " THB");
+      String[] parts = a.split(":"); // 0=ID, 1=Name, 2=Balance
+      JLabel l = new JLabel(parts[1] + " = " + String.format("%,.2f", Double.parseDouble(parts[2])) + " THB");
       l.setForeground(TEXT_COLOR);
+      l.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 0));
       accountsListPanel.add(l);
-      net += Double.parseDouble(parts[1]);
+      net += Double.parseDouble(parts[2]);
     }
     accountsListPanel.revalidate();
     accountsListPanel.repaint();
 
-    // คำนวณรายรับรายจ่ายรวม
-    double inc = 0, exp = 0;
+    double inc = 0, exp = 0, todayExp = 0, monthExp = 0;
+    LocalDate today = LocalDate.now();
+
     for (Object[] row : data) {
       if (row[8].toString().equals("COMPLETED")) {
-        if (row[4].toString().equals("INCOME"))
-          inc += (double) row[5];
-        if (row[4].toString().equals("EXPENSE"))
-          exp += (double) row[5];
+        double amt = (double) row[5];
+        if (row[4].toString().equals("INCOME")) {
+          inc += amt;
+        } else if (row[4].toString().equals("EXPENSE")) {
+          exp += amt;
+          LocalDate txDate = LocalDate.parse(row[1].toString());
+          if (txDate.equals(today))
+            todayExp += amt;
+          if (txDate.getMonth() == today.getMonth() && txDate.getYear() == today.getYear())
+            monthExp += amt;
+        }
       }
     }
-    sumIncomeLabel.setText(String.format("Total Income: %.2f", inc));
-    sumExpenseLabel.setText(String.format("Total Expense: %.2f", exp));
-    netBalanceLabel.setText(String.format("Net Balance: %.2f", (net + inc - exp)));
+
+    String budgetJson = DatabaseManager.getBudgetAsJSON();
+    String mode = budgetJson.contains("\"mode\":\"MONTHLY\"") ? "MONTHLY" : "DAILY";
+    String amountStr = budgetJson.split("\"amount\":")[1].replace("}", "").trim();
+    double budgetAmount = Double.parseDouble(amountStr);
+
+    int daysInMonth = today.lengthOfMonth();
+    double dailyLimit = 0, monthlyLimit = 0;
+
+    if (budgetAmount > 0) {
+      if (mode.equals("MONTHLY")) {
+        monthlyLimit = budgetAmount;
+        dailyLimit = budgetAmount / daysInMonth;
+      } else {
+        dailyLimit = budgetAmount;
+        monthlyLimit = budgetAmount * daysInMonth;
+      }
+    }
+
+    updateSummaryBox(sumIncomeLabel, "Total Income", inc, new Color(76, 175, 80));
+    updateSummaryBox(sumExpenseLabel, "Total Expense", exp, new Color(244, 67, 54));
+    updateSummaryBox(netBalanceLabel, "Net Balance", (net + inc - exp), TEXT_COLOR);
+
+    updateBudgetBox(todayBudgetLabel, "Today's Budget Left", dailyLimit - todayExp, budgetAmount == 0);
+    updateBudgetBox(monthBudgetLabel, "Monthly Budget Left", monthlyLimit - monthExp, budgetAmount == 0);
   }
 }

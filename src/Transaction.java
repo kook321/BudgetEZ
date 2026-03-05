@@ -1,5 +1,3 @@
-
-// ไฟล์: Transaction.java (อัปเดตเพิ่มเติม)
 import java.time.LocalDate;
 
 public class Transaction {
@@ -13,10 +11,10 @@ public class Transaction {
   private Account toAccount;
   private double amount;
 
-  // 🌟 1. เพิ่มตัวแปรเก็บสถานะ
+  // Transaction Status like complete, pending
   private TransactionStatus status;
 
-  // 🌟 2. อัปเดต Constructor ให้รับค่า Status เข้ามาด้วย
+  // Constructor
   public Transaction(String id, String details, String note, TransactionType type, Category category,
       LocalDate date, Account fromAccount, Account toAccount, double amount,
       TransactionStatus status) {

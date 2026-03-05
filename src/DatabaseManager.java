@@ -297,9 +297,11 @@ public class DatabaseManager {
       Class.forName("org.sqlite.JDBC");
       Connection conn = DriverManager.getConnection(URL);
       Statement stmt = conn.createStatement();
-      ResultSet rs = stmt.executeQuery("SELECT name, balance FROM accounts");
+
+      // 🌟 แก้ไข: ดึงคอลัมน์ id มาด้วย เพื่อเอาไว้ใช้อ้างอิงตอนแก้ไข/ลบ
+      ResultSet rs = stmt.executeQuery("SELECT id, name, balance FROM accounts");
       while (rs.next()) {
-        list.add(rs.getString("name") + ":" + rs.getDouble("balance")); // ส่งชื่อและเงินกลับไป
+        list.add(rs.getInt("id") + ":" + rs.getString("name") + ":" + rs.getDouble("balance"));
       }
       rs.close();
       stmt.close();
