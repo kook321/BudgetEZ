@@ -1,1 +1,1 @@
-tx
+new Transaction(acc, 500)
