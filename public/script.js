@@ -98,8 +98,8 @@ function updateSummary() {
   let todayElem = document.getElementById('todayBudgetLeft');
   let monthElem = document.getElementById('monthlyBudgetLeft');
 
-  todayElem.innerText = budget.amount === 0 ? "NOT FIX" : todayLeft.toFixed(2);
-  monthElem.innerText = budget.amount === 0 ? "NOT FIX" : monthLeft.toFixed(2);
+  todayElem.innerText = budget.amount === 0 ? "Unlimited" : todayLeft.toFixed(2);
+  monthElem.innerText = budget.amount === 0 ? "Unlimited" : monthLeft.toFixed(2);
 
   todayElem.style.color = todayLeft < 0 ? "#ff4c4c" : "#17a2b8";
   monthElem.style.color = monthLeft < 0 ? "#ff4c4c" : "#17a2b8";
@@ -285,7 +285,7 @@ function editTx(id) {
 }
 
 function deleteTx(id) {
-  if (confirm("คุณต้องการลบรายการนี้ใช่หรือไม่?")) {
+  if (confirm("Do you want to delete this item?")) {
     fetch("http://localhost:8080/api/transaction", { method: "DELETE", body: id })
       .then(() => loadAllData())
       .catch(err => console.error(err));

@@ -24,6 +24,8 @@ public class UI extends JFrame {
   private JLabel sumIncomeLabel, sumExpenseLabel, todayBudgetLabel, monthBudgetLabel, netBalanceLabel;
   private JPanel accountsListPanel;
 
+  private double currentNetBalance = 0.0;
+
   /**
    * Initializes the UI components and sets up global font rendering.
    */
@@ -330,7 +332,7 @@ public class UI extends JFrame {
   }
 
   /**
-   * Budget Setup System (Monthly/Daily)
+   * Budget Setup System (Monthly/Daily) พร้อมระบบตรวจสอบยอดเงิน
    */
   private void setBudget() {
     JPanel form = new JPanel(new GridLayout(2, 2, 5, 5));
@@ -352,7 +354,23 @@ public class UI extends JFrame {
     if (JOptionPane.showConfirmDialog(this, form, "Set Budget",
         JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
       try {
-        DatabaseManager.updateBudget(modeBox.getSelectedItem().toString(), Double.parseDouble(amtF.getText()));
+        double inputAmt = Double.parseDouble(amtF.getText());
+        String selectedMode = modeBox.getSelectedItem().toString();
+
+        int daysInMonth = LocalDate.now().lengthOfMonth();
+        double requiredAmount = selectedMode.equals("MONTHLY") ? inputAmt : (inputAmt * daysInMonth);
+
+        if (requiredAmount > this.currentNetBalance) {
+          JOptionPane.showMessageDialog(this,
+              "❌ Cannot save budget!\nThe required amount (" + String.format("%,.2f", requiredAmount)
+                  + " THB) exceeds your current Net Balance (" + String.format("%,.2f", this.currentNetBalance)
+                  + " THB).",
+              "Budget Exceeded",
+              JOptionPane.ERROR_MESSAGE);
+          return;
+        }
+
+        DatabaseManager.updateBudget(selectedMode, inputAmt);
         refreshData();
         JOptionPane.showMessageDialog(this, "✅ Budget set successfully!");
       } catch (Exception e) {
@@ -490,6 +508,9 @@ public class UI extends JFrame {
     updateSummaryBox(sumIncomeLabel, "Total Income", inc, new Color(76, 175, 80));
     updateSummaryBox(sumExpenseLabel, "Total Expense", exp, new Color(244, 67, 54));
     updateSummaryBox(netBalanceLabel, "Net Balance", (net + inc - exp), TEXT_COLOR);
+
+    this.currentNetBalance = (net + inc - exp);
+    updateSummaryBox(netBalanceLabel, "Net Balance", this.currentNetBalance, TEXT_COLOR);
 
     updateBudgetBox(todayBudgetLabel, "Today's Budget Left", dailyLimit - todayExp, budgetAmount == 0);
     updateBudgetBox(monthBudgetLabel, "Monthly Budget Left", monthlyLimit - monthExp, budgetAmount == 0);

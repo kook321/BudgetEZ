@@ -21,6 +21,12 @@ This is a personal finance management web application running on localhost. The 
 
 ## How to Compile & Run
 
+**Download**
+
+```
+git clone -b web-desktop-fusion https://github.com/kook321/BudgetEZ.git
+```
+
 **Prerequisites**
 
 - Java Development Kit (JDK) version 11 or above
