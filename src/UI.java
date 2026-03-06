@@ -7,6 +7,8 @@ import java.util.List;
 
 /**
  * The main Desktop User Interface (Java Swing) for the Balance Sheet Dashboard.
+ * This class handles all visual components and user interactions for the
+ * desktop application.
  */
 public class UI extends JFrame {
 
@@ -137,7 +139,7 @@ public class UI extends JFrame {
     TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(txTableModel);
     txTable.setRowSorter(sorter);
 
-    // Hide ID column
+    // Hide ID column (Used for internal backend references)
     txTable.getColumnModel().getColumn(0).setMinWidth(0);
     txTable.getColumnModel().getColumn(0).setMaxWidth(0);
 
@@ -163,6 +165,13 @@ public class UI extends JFrame {
   }
 
   // --- UI Helpers ---
+
+  /**
+   * Creates a styled panel that acts as a container card.
+   *
+   * @param title The title of the card.
+   * @return A styled JPanel.
+   */
   private JPanel createCardPanel(String title) {
     JPanel panel = new JPanel(new BorderLayout(0, 10));
     panel.setBackground(BG_CARD);
@@ -175,6 +184,13 @@ public class UI extends JFrame {
     return panel;
   }
 
+  /**
+   * Creates a custom styled button.
+   *
+   * @param text    The text to display on the button.
+   * @param bgColor The background color of the button.
+   * @return A styled JButton.
+   */
   private JButton createButton(String text, Color bgColor) {
     JButton btn = new JButton(text);
     btn.setBackground(bgColor);
@@ -183,6 +199,13 @@ public class UI extends JFrame {
     return btn;
   }
 
+  /**
+   * Creates a summary box label with HTML formatting.
+   *
+   * @param title    The title of the summary box.
+   * @param valColor The color of the value text.
+   * @return A formatted JLabel.
+   */
   private JLabel createSummaryBox(String title, Color valColor) {
     JLabel label = new JLabel();
     label.setHorizontalAlignment(SwingConstants.CENTER);
@@ -193,6 +216,14 @@ public class UI extends JFrame {
     return label;
   }
 
+  /**
+   * Updates an existing summary box with new values.
+   *
+   * @param label The JLabel to update.
+   * @param title The title of the summary box.
+   * @param value The numeric value to display.
+   * @param color The color of the numeric value.
+   */
   private void updateSummaryBox(JLabel label, String title, double value, Color color) {
     String hexColor = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
     String html = "<html><div style='text-align: center; font-family: sans-serif;'>"
@@ -203,6 +234,14 @@ public class UI extends JFrame {
     label.setText(html);
   }
 
+  /**
+   * Updates the budget summary boxes, handling the "Unlimited" state.
+   *
+   * @param label   The JLabel to update.
+   * @param title   The title of the budget box.
+   * @param value   The remaining budget value.
+   * @param noLimit True if no budget limit is set.
+   */
   private void updateBudgetBox(JLabel label, String title, double value, boolean noLimit) {
     if (noLimit) {
       String html = "<html><div style='text-align: center; font-family: sans-serif;'>"
@@ -307,6 +346,9 @@ public class UI extends JFrame {
     }
   }
 
+  /**
+   * Retrieves the selected transaction ID and opens the edit dialog.
+   */
   private void editSelectedTransaction() {
     int row = txTable.getSelectedRow();
     if (row == -1) {
@@ -317,6 +359,9 @@ public class UI extends JFrame {
     showTransactionDialog(id);
   }
 
+  /**
+   * Deletes the selected transaction after user confirmation.
+   */
   private void deleteSelectedTransaction() {
     int row = txTable.getSelectedRow();
     if (row == -1) {
@@ -332,7 +377,8 @@ public class UI extends JFrame {
   }
 
   /**
-   * Budget Setup System (Monthly/Daily) พร้อมระบบตรวจสอบยอดเงิน
+   * Budget Setup System (Monthly/Daily) with validation to prevent exceeding
+   * current net balance.
    */
   private void setBudget() {
     JPanel form = new JPanel(new GridLayout(2, 2, 5, 5));
@@ -360,6 +406,7 @@ public class UI extends JFrame {
         int daysInMonth = LocalDate.now().lengthOfMonth();
         double requiredAmount = selectedMode.equals("MONTHLY") ? inputAmt : (inputAmt * daysInMonth);
 
+        // Validation: Prevent setting budget over available net balance
         if (requiredAmount > this.currentNetBalance) {
           JOptionPane.showMessageDialog(this,
               "❌ Cannot save budget!\nThe required amount (" + String.format("%,.2f", requiredAmount)
@@ -380,7 +427,7 @@ public class UI extends JFrame {
   }
 
   /**
-   * Account Management System (Add / Edit / Delete)
+   * Account Management System (Add / Edit / Delete).
    */
   private void manageAccountsDialog() {
     JPanel form = new JPanel(new GridLayout(3, 2, 5, 5));
@@ -446,47 +493,83 @@ public class UI extends JFrame {
   }
 
   /**
-   * Refreshes all UI components by fetching fresh data from the DatabaseManager.
+   * Refreshes all UI components by fetching fresh data from the DatabaseManager
+   * and calculating real-time account balances and summaries.
    */
   private void refreshData() {
+    // 1. Reload transactions table
     txTableModel.setRowCount(0);
     Object[][] data = DatabaseManager.getTransactionsForSwingTable();
     for (Object[] row : data)
       txTableModel.addRow(row);
 
-    accountsListPanel.removeAll();
+    // 2. Fetch initial account balances into a Map for calculation
     List<String> accs = DatabaseManager.getAccountNames();
-    double net = 0;
+    java.util.Map<String, Double> accountBalances = new java.util.LinkedHashMap<>();
     for (String a : accs) {
-      String[] parts = a.split(":"); // 0=ID, 1=Name, 2=Balance
-      JLabel l = new JLabel(parts[1] + " = " + String.format("%,.2f", Double.parseDouble(parts[2])) + " THB");
-      l.setForeground(TEXT_COLOR);
-      l.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 0));
-      accountsListPanel.add(l);
-      net += Double.parseDouble(parts[2]);
+      String[] parts = a.split(":"); // 0=ID, 1=Name, 2=Initial Balance
+      accountBalances.put(parts[1], Double.parseDouble(parts[2]));
     }
-    accountsListPanel.revalidate();
-    accountsListPanel.repaint();
 
+    // 3. Process transactions to calculate actual balances, income, and expenses
     double inc = 0, exp = 0, todayExp = 0, monthExp = 0;
     LocalDate today = LocalDate.now();
 
     for (Object[] row : data) {
       if (row[8].toString().equals("COMPLETED")) {
         double amt = (double) row[5];
-        if (row[4].toString().equals("INCOME")) {
+        String type = row[4].toString();
+        String fromAcc = row[6] != null ? row[6].toString() : "None";
+        String toAcc = row[7] != null ? row[7].toString() : "None";
+
+        if (type.equals("INCOME")) {
           inc += amt;
-        } else if (row[4].toString().equals("EXPENSE")) {
+          if (accountBalances.containsKey(toAcc)) {
+            accountBalances.put(toAcc, accountBalances.get(toAcc) + amt);
+          }
+        } else if (type.equals("EXPENSE")) {
           exp += amt;
           LocalDate txDate = LocalDate.parse(row[1].toString());
           if (txDate.equals(today))
             todayExp += amt;
           if (txDate.getMonth() == today.getMonth() && txDate.getYear() == today.getYear())
             monthExp += amt;
+
+          if (accountBalances.containsKey(fromAcc)) {
+            accountBalances.put(fromAcc, accountBalances.get(fromAcc) - amt);
+          }
+        } else if (type.equals("TRANSFER")) {
+          if (accountBalances.containsKey(fromAcc)) {
+            accountBalances.put(fromAcc, accountBalances.get(fromAcc) - amt);
+          }
+          if (accountBalances.containsKey(toAcc)) {
+            accountBalances.put(toAcc, accountBalances.get(toAcc) + amt);
+          }
         }
       }
     }
 
+    // 4. Update Accounts List UI with calculated final balances
+    accountsListPanel.removeAll();
+    double currentNet = 0;
+
+    for (String a : accs) {
+      String accName = a.split(":")[1];
+      double finalBalance = accountBalances.get(accName);
+      currentNet += finalBalance; // Accumulate Net Balance
+
+      JLabel l = new JLabel(accName + " = " + String.format("%,.2f", finalBalance) + " THB");
+      l.setForeground(TEXT_COLOR);
+      l.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 0));
+      accountsListPanel.add(l);
+    }
+    accountsListPanel.revalidate();
+    accountsListPanel.repaint();
+
+    // Store calculated net balance for budget validation
+    this.currentNetBalance = currentNet;
+
+    // 5. Calculate Budget Limits
     String budgetJson = DatabaseManager.getBudgetAsJSON();
     String mode = budgetJson.contains("\"mode\":\"MONTHLY\"") ? "MONTHLY" : "DAILY";
     String amountStr = budgetJson.split("\"amount\":")[1].replace("}", "").trim();
@@ -505,11 +588,9 @@ public class UI extends JFrame {
       }
     }
 
+    // 6. Update Summary UI Components
     updateSummaryBox(sumIncomeLabel, "Total Income", inc, new Color(76, 175, 80));
     updateSummaryBox(sumExpenseLabel, "Total Expense", exp, new Color(244, 67, 54));
-    updateSummaryBox(netBalanceLabel, "Net Balance", (net + inc - exp), TEXT_COLOR);
-
-    this.currentNetBalance = (net + inc - exp);
     updateSummaryBox(netBalanceLabel, "Net Balance", this.currentNetBalance, TEXT_COLOR);
 
     updateBudgetBox(todayBudgetLabel, "Today's Budget Left", dailyLimit - todayExp, budgetAmount == 0);
